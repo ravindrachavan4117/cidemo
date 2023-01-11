@@ -1,97 +1,41 @@
-version: 2.1
+# Java Maven CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-java/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      # specify the version you desire here
+      - image: docker.artifactory.foc.zone/continuous-quality/provar:latest
+      
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
 
-machine:
+   # working_directory: ~/repo
 
- services:
+    environment:
+      # Customize the JVM maximum heap limit
+      PROVAR_HOME: /home/circleci/project/ProvarHome
+      testproject.home: /home/circleci/project/DemoProject
+      testproject.results: /home/circleci/project/DemoProject/Results
+    
+    steps:
+      - checkout
 
-  - docker
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "DemoProject/build.xml" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
 
-defaults: &defaults
+      # run: echo $PROVAR_HOME $PROVAR_SF_DemoAdmin $PROVAR_SF_DemoAdmin_password        
+      - run: ant -lib $PROVAR_HOME/ant -f DemoProject/build.xml
+      
+      - store_test_results:
+          path: /home/circleci/project/DemoProject/Results
 
- working_directory: "~/project"
-
- docker:
-
-  - image: docker.artifactory.foc.zone/continuous-quality/provar:latest
-
- 
-
-enterprise_setup_step: &enterprise_setup_step
-
- run:
-
-  name: "Prepare Enterprise Setup"
-
-  command: "curl -sL https://tools.circleci.foc.zone/install-certs | bash -"
-
- 
-
-attach_workspace_step: &attach_workspace_step
-
- attach_workspace:
-
-  at: "."
-
-persist_workspace_step: &persist_workspace_step
-
- persist_to_workspace:
-
-  root: "."
-
-  paths: ["."]
-
- 
-
-env_var: &env_var
-
- WORKSPACE: ui_testing
-
- PROVAR_HOME: /srv/Provar/Provar_ANT_latest
-
- TESTRESULTS: ui_testing/ANT/Results
-
- 
-
-provar_test_run: &provar_test_run
-
- <<: *defaults
-
- steps:
-
-  - *enterprise_setup_step
-
-  - checkout
-
-  - run:
-
-    name: set provar secrets
-
-    command: |
-
-     pwd
-
-     sed -i "s/provarClientId/${provarClientId}/g" ${WORKSPACE}/.secrets
-
-     sed -i "s/provarClientSecret/${provarClientSecret}/g" ${WORKSPACE}/.secrets
-
-     sed -i "s/provarRefreshToken/${provarRefreshToken}/g" ${WORKSPACE}/.secrets
-
-     sed -i "s/provarAccessToken/${provarAccessToken}/g" ${WORKSPACE}/.secrets
-
-     sed -i "s/saucelabAccessToken/${saucelabAccessToken}/g" ${WORKSPACE}/.secrets
-
-  - run:
-
-    name: Run UI Tests
-
-    command: |
-
-     xvfb-run --auto-servernum --server-args "-screen 0 1600x900x24" ant -f ${WORKSPACE}/ANT/${BUILD_FILENAME}.xml -v
-
-  - store_artifacts:
-
-    path: ui_testing/ANT/Results
-
-  - store_test_results:
-
-    path: ui_testing/ANT/Results/JUnit.xml
+  
